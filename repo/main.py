@@ -7,7 +7,9 @@ app = fastapi.FastAPI()
 @app.get("/function_list")
 async def return_list():
     path = "./mw_codes/"
-    file_list = os.listdir(path)
+    file_list = list(
+        map(lambda filename: os.path.splitext(filename)[0], os.listdir(path))
+    )
     # print ("file_list: {}".format(file_list))
     return file_list
 
@@ -18,7 +20,11 @@ async def read_item(function_name):
     file_list = os.listdir(path)
     for filename in file_list:
         if function_name == os.path.splitext(filename)[0]:
-            with open(function_name, encoding="utf8", mode="r") as file:
+            with open(
+                os.path.join(path, f"{function_name}.py"),
+                encoding="utf8",
+                mode="r",
+            ) as file:
                 function_code = file.read()
 
             return {
