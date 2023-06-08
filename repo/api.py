@@ -1,31 +1,28 @@
 import fastapi
-import os 
+import os
 
 app = fastapi.FastAPI()
 
 
-
 @app.get("/function_list")
 async def return_list():
-    path = "/Users/joyeongjun/Documents/abc"
+    path = "./mw_codes/"
     file_list = os.listdir(path)
     # print ("file_list: {}".format(file_list))
     return file_list
 
 
-
 @app.get("/get_function_code/{function_name}")
 async def read_item(function_name):
-
-    path = "/Users/joyeongjun/Documents/abc"
+    path = "./mw_codes/"
     file_list = os.listdir(path)
-    for i in range(file_list):
-        if(function_name == file_list[i]):
-            file = open(function_name,'r')
-            FUN_CODE = file.read()
-            file.close()
-            return {"function_name": function_name,
-            "function_code": FUN_CODE}
-    return 'NOT_FOUND'
+    for filename in file_list:
+        if function_name == os.path.splitext(filename)[0]:
+            with open(function_name, encoding="utf8", mode="r") as file:
+                function_code = file.read()
 
-    
+            return {
+                "function_name": function_name,
+                "function_code": function_code,
+            }
+    return "NOT_FOUND"
