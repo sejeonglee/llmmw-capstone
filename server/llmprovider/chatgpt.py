@@ -1,6 +1,8 @@
 import openai
 
-with open("openai_key.txt", encoding="utf8", mode="r") as apikeyfile:
+with open(
+    "llmprovider/openai_key.txt", encoding="utf8", mode="r"
+) as apikeyfile:
     openai.api_key = apikeyfile.read()
 
 
@@ -22,4 +24,4 @@ def generate_response(prompt: str):
             }
         ],
     )
-    return completion.choices[0].text
+    return completion.choices[0].message.content
