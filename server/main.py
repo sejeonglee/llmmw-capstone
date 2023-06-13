@@ -6,8 +6,9 @@ import asyncio
 import websockets
 
 
-from llmprovider import mock
-from middleware import check_run_availiable
+from llmprovider import chatgpt as llm
+from middleware import run_codes, run_codes_sync
+from middleware import PRE_EXAMPLES, POST_EXAMPLES
 
 
 async def websocket_main(websocket):
@@ -17,25 +18,25 @@ async def websocket_main(websocket):
         req = json.loads(wsck_req)
         print(f"<<< {req}")
 
-        response = mock.generate_response(req.get("message"))
+        pre_results = await run_codes_sync(
+            PRE_EXAMPLES, req.get("message"), websocket=websocket
+        )
+        if any(map(lambda result: result.get("returncode") != 0, pre_results)):
+            await websocket.send("Error: pre code failed")
+            continue
+        print(pre_results)
+
+        response = llm.generate_response(req.get("message"))
 
         await websocket.send(response)
         print(f">>> response sended: {response[0:100]}")
 
-        selected_middlewares = [check_run_availiable]
-
-        async def run_middleware(middleware, response):
-            await websocket.send(await middleware(response))
-
-        running_middlewares = map(
-            lambda m: asyncio.create_task(run_middleware(m, response)),
-            selected_middlewares,
-        )
-        await asyncio.gather(*running_middlewares)
+        post_results = await run_codes(POST_EXAMPLES, websocket=websocket)
+        print(post_results)
 
 
 async def main():
-    async with websockets.serve(websocket_main, "localhost", 8765):
+    async with websockets.serve(websocket_main, "localhost", 8765):  # type: ignore
         await asyncio.Future()  # run forever
 
 
