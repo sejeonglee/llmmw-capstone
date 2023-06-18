@@ -11,6 +11,8 @@ websockets = "^11.0.3"
 openai = "^0.27.8"
 fastapi = "^0.96.0"
 uvicorn = {extras = ["standard"], version = "^0.22.0"}
+Wikipedia-API = "^0.5.8"
+konlpy = "^0.6.0"
 
 [tool.poetry.group.dev.dependencies]
 black = "^23.3.0"

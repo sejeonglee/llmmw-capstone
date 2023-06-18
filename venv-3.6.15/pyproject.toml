@@ -1,0 +1,15 @@
+[tool.poetry]
+name = "venv-3-6-15"
+version = "0.1.0"
+description = ""
+authors = ["sejeonglee <sejeonglee2@gmail.com>"]
+readme = "README.md"
+packages = [{include = "venv_3"}]
+
+[tool.poetry.dependencies]
+python = "^3.6"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
