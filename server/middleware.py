@@ -10,16 +10,30 @@ from utils import extract_python_code
 
 PRE_EXAMPLES = [
     {
-        "name": "not starts with Hello",
+        "name": "private-info",
         "code": """
+import re
 import sys
-if sys.argv[1].startswith("Hello"):
-    sys.exit(1)
+
+patterns = {
+    "id_number": r"(\d{6}[ ,-]-?[1-4]\d{6})|(\d{6}[ ,-]?[1-4])",
+    "driver_license": r"(\d{2}-\d{2}-\d{6}-\d{2})",
+    "phone_number": r"(\d{2,3}[ ,-]-?\d{2,4}[ ,-]-?\d{4})",
+    "email": r"(([\w!-_\.])*@([\w!-_\.])*\.[\w]{2,3})",
+    "credit_card": r"[34569][0-9]{3}[-~.[ ]][0-9]{4}[-~.[ ]][0-9]{4}[-~.[ ]][0-9]{4}",
+}
+
+response = sys.argv[1]
+
+for pattern in patterns.values():
+    if re.search(pattern, response):
+        sys.exit(1)
 sys.exit(0)
+
     """,
     },
     {
-        "name": "금칙어 여부",
+        "name": "forbidden-words",
         "code": """
 import sys
 if sys.argv[1].find("forbidden") != -1:
@@ -48,7 +62,7 @@ POST_EXAMPLES = [
     # """,
     #     },
     {
-        "name": "check errors in Python 3.10",
+        "name": "python310",
         "code": """
 import subprocess
 import re
@@ -67,6 +81,10 @@ def extract_python_code(s):
 runtime_info = "Python 3.10.6"  # TODO: Hard Coded
 response = sys.argv[1]
 python_code = extract_python_code(response)
+
+print(python_code)
+
+
 if python_code is None:
     sys.exit(0)
 
@@ -78,7 +96,7 @@ sys.exit(exit_code)
 """,
     },
     {
-        "name": "check errors in Python 3.6",
+        "name": "python36",
         "code": """
 import subprocess
 import re
@@ -97,15 +115,49 @@ def extract_python_code(s):
 runtime_info = "Python 3.6.15"  # TODO: Hard Coded
 response = sys.argv[1]
 python_code = extract_python_code(response)
+
 if python_code is None:
     sys.exit(0)
 
+print(python_code)
+    
 exit_code = subprocess.run(
-    ["/home/sejeonglee/.cache/pypoetry/virtualenvs/venv-3-6-15-gMqX61pc-py3.6/bin/python", "-c", python_code], check=False
+    ["/home/sejeonglee/.pyenv/versions/3.6.15/bin/python", "-c", python_code], check=False
 ).returncode
 
 sys.exit(exit_code)
 """,
+    },
+    {
+        "name": "wikipedia",
+        "code": """
+import re
+import sys
+from konlpy.tag import Okt
+import wikipediaapi
+
+pattern = r"(\S*[^하|키])[은|는]\s([^\.]*)"
+entities = re.findall(pattern, sys.argv[1])
+print(sys.argv[1])
+
+
+okt = Okt()
+wiki = wikipediaapi.Wikipedia("ko")
+
+for entity, desc in entities:
+    page_py = wiki.page(entity)
+    if not page_py.exists():
+        continue
+    summary = page_py.summary
+    print(set(okt.nouns(summary)).intersection(set(okt.nouns(sys.argv[1]))))
+    if (
+        len(set(okt.nouns(summary)).intersection(set(okt.nouns(sys.argv[1]))))
+        > 2
+    ):
+        sys.exit(0)
+
+sys.exit(1)
+        """,
     },
 ]
 
@@ -123,12 +175,12 @@ async def check_run_availiable(response: str | None):
     exit_code = subprocess.run(
         ["python", "-c", python_code], check=False
     ).returncode
-    return (
-        f"- Code status: **{str( exit_code == 0)}**, Runtime: {runtime_info}"
-    )
+    return f"- Code status: **{str( exit_code == 0)}**, Runtime: {runtime_info}"
 
 
-async def run_codes(func_list: list[dict[str, str]], *args, websocket=None):
+async def run_codes(
+    func_list: list[dict[str, str]], *args, websocket=None, uuid=None
+):
     async def run_single_code(funcs):
         name = funcs.get("name")
         code = funcs.get("code")
@@ -153,7 +205,9 @@ async def run_codes(func_list: list[dict[str, str]], *args, websocket=None):
         if websocket:
             print(f"websocket send: {result}")
             await websocket.send(
-                json.dumps({**result, "response_type": "post_result"})
+                json.dumps(
+                    {**result, "response_type": "post_result", "uuid": uuid}
+                )
             )
         else:
             print(result)
@@ -163,7 +217,7 @@ async def run_codes(func_list: list[dict[str, str]], *args, websocket=None):
 
 
 async def run_codes_sync(
-    func_list: list[dict[str, str]], *args, websocket=None
+    func_list: list[dict[str, str]], *args, websocket=None, uuid=None
 ):
     async def run_single_code(name, code):
         proc = subprocess.run(
@@ -182,7 +236,9 @@ async def run_codes_sync(
         if websocket:
             print(f"websocket send: {result}")
             await websocket.send(
-                json.dumps({**result, "response_type": "pre_result"})
+                json.dumps(
+                    {**result, "response_type": "pre_result", "uuid": uuid}
+                )
             )
         else:
             print(result)

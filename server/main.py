@@ -19,15 +19,18 @@ async def websocket_main(websocket):
         req = json.loads(wsck_req)
         print(f"<<< {req}")
 
-        if req.get("method") == "get_function_list":
-            res = requests.get("http://localhost:8000/function_list", timeout=5)
-            await websocket.send(
-                json.dumps({**res.json(), "response_type": "function_list"})
-            )
-            continue
+        # if req.get("method") == "get_function_list":
+        #     res = requests.get("http://localhost:8000/function_list", timeout=5)
+        #     await websocket.send(
+        #         json.dumps({**res.json(), "response_type": "function_list"})
+        #     )
+        #     continue
 
         pre_results = await run_codes_sync(
-            PRE_EXAMPLES, req.get("message"), websocket=websocket
+            PRE_EXAMPLES,
+            req.get("message"),
+            websocket=websocket,
+            uuid=req.get("uuid"),
         )
         if any(map(lambda result: result.get("returncode") != 0, pre_results)):
             await websocket.send(
@@ -36,6 +39,7 @@ async def websocket_main(websocket):
                         "message": "Error: pre code failed. Not sended",
                         "response_type": "prompt_result",
                         "error": True,
+                        "uuid": req.get("uuid"),
                     }
                 )
             )
@@ -50,6 +54,8 @@ async def websocket_main(websocket):
                     "message": response,
                     "response_type": "prompt_result",
                     "error": False,
+                    "uuid": req.get("uuid"),
+                    "post_middlewares": req.get("post_middlewares"),
                 },
                 ensure_ascii=False,
             )
@@ -57,7 +63,10 @@ async def websocket_main(websocket):
         print(f">>> response sended: {response[0:100]}")
 
         post_results = await run_codes(
-            POST_EXAMPLES, response, websocket=websocket
+            POST_EXAMPLES,
+            response,
+            websocket=websocket,
+            uuid=req.get("uuid"),
         )
         print(post_results)
 
